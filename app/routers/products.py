@@ -1,4 +1,4 @@
-"""Product endpoints: search, detail, create (admin), stock update (admin)."""
+"""Product endpoints: search, detail, create (admin), stock update (admin), audit history."""
 import logging
 import uuid
 from typing import Optional
@@ -10,6 +10,7 @@ from app.database import get_db
 from app.schemas.product import (
     ProductCreate, ProductUpdate, ProductResponse, ProductListResponse, StockUpdate
 )
+from app.schemas.audit import AuditEventResponse
 from app.services.product_service import ProductService
 from app.auth.dependencies import require_admin
 
@@ -83,3 +84,16 @@ async def adjust_stock(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return product
+
+
+@router.get(
+    "/{product_id}/audit",
+    response_model=list[AuditEventResponse],
+    summary="Get product audit events (admin)",
+    dependencies=[Depends(require_admin)],
+)
+async def get_product_audit_events(
+    product_id: uuid.UUID, db: AsyncSession = Depends(get_db)
+):
+    svc = ProductService(db)
+    return await svc.get_audit_events(product_id)

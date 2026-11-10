@@ -17,3 +17,13 @@ async def test_readiness(client: AsyncClient):
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "ready"
+
+
+@pytest.mark.asyncio
+async def test_metrics(client: AsyncClient):
+    resp = await client.get("/metrics")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["service"] == "ecommerce-api"
+    assert "uptime_seconds" in data
+    assert "metrics" in data

@@ -1,6 +1,8 @@
-"""Health and readiness check endpoints."""
+"""Health, readiness, and metrics observability endpoints."""
 import logging
-from fastapi import APIRouter, Depends
+import os
+import time
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
@@ -8,6 +10,8 @@ from app.database import get_db
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+_START_TIME = time.time()
 
 
 @router.get("/health", summary="Liveness check")
@@ -24,5 +28,30 @@ async def readiness(db: AsyncSession = Depends(get_db)):
         return {"status": "ready", "database": "connected"}
     except Exception as exc:
         logger.error("Readiness check failed: %s", exc)
-        from fastapi import HTTPException
         raise HTTPException(status_code=503, detail="Database not reachable")
+
+
+@router.get("/metrics", summary="Application metrics (Prometheus/JSON format)")
+async def metrics(db: AsyncSession = Depends(get_db)):
+    """
+    Exposes application metrics (Stretch Goal in Assessment Brief):
+    Uptime, process PID, environment, and DB status.
+    """
+    uptime_seconds = round(time.time() - _START_TIME, 2)
+    db_connected = False
+    try:
+        await db.execute(text("SELECT 1"))
+        db_connected = True
+    except Exception:
+        pass
+
+    return {
+        "service": "ecommerce-api",
+        "uptime_seconds": uptime_seconds,
+        "pid": os.getpid(),
+        "database_connected": db_connected,
+        "metrics": {
+            "app_uptime_seconds": uptime_seconds,
+            "database_status_up": 1 if db_connected else 0,
+        },
+    }

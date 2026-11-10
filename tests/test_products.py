@@ -71,3 +71,31 @@ async def test_adjust_stock_prevents_negative(client: AsyncClient):
         headers=ADMIN_HEADERS,
     )
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_adjust_stock_records_audit_event(client: AsyncClient):
+    create_resp = await client.post(
+        "/api/v1/products", json={**SAMPLE_PRODUCT, "sku": "TEST-AUDIT-SKU", "stock_quantity": 20},
+        headers=ADMIN_HEADERS,
+    )
+    product_id = create_resp.json()["id"]
+
+    # Valid stock adjustment
+    adj_resp = await client.post(
+        f"/api/v1/products/{product_id}/stock",
+        json={"quantity_delta": 15, "reason": "Restocked inventory"},
+        headers=ADMIN_HEADERS,
+    )
+    assert adj_resp.status_code == 200
+    assert adj_resp.json()["stock_quantity"] == 35
+
+    # Check audit history
+    audit_resp = await client.get(
+        f"/api/v1/products/{product_id}/audit",
+        headers=ADMIN_HEADERS,
+    )
+    assert audit_resp.status_code == 200
+    events = audit_resp.json()
+    assert len(events) >= 2  # create_product and adjust_stock
+    assert any(e["action"] == "adjust_stock" for e in events)
