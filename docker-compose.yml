@@ -1,0 +1,63 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ecom_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ecomdb
+      POSTGRES_USER: ecom
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ecom_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecom -d ecomdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ecom_api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://ecom:${POSTGRES_PASSWORD:-ecom_pass}@db:5432/ecomdb
+      API_KEY_ADMIN: ${API_KEY_ADMIN:-changeme-admin-key}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      APP_ENV: ${APP_ENV:-production}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  nginx:
+    image: nginx:alpine
+    container_name: ecom_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx_certs:/etc/nginx/certs:ro
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+    driver: local
+  nginx_certs:
+    driver: local

@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      sh -c "pip install -r requirements-dev.txt &&
+             pytest tests/ -v --tb=short"
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:///./test.db
+      API_KEY_ADMIN: changeme-admin-key
+      APP_ENV: test
+    volumes:
+      - .:/app

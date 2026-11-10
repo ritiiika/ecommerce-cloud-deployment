@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.db
+
+# Docker
+.env
+!.env.example
+
+# Certs (never commit real certs)
+nginx/certs/
+
+# Backups
+backups/
+
+# IDE
+.idea/
+.vscode/
+*.swp
