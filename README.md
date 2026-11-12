@@ -16,6 +16,8 @@ A production-ready REST API for managing products and orders, built with **FastA
 - [CI/CD](#cicd)
 - [API Reference](#api-reference)
 - [Database Seeding](#database-seeding)
+- [Backup and Restore (Local & AWS S3)](#backup-and-restore-local--aws-s3)
+- [AWS Cloud & Terraform IaC](#aws-cloud--terraform-iac)
 - [Rollback](#rollback)
 - [Security Notes](#security-notes)
 
@@ -35,6 +37,7 @@ A production-ready REST API for managing products and orders, built with **FastA
 | **Containerization** | Multi-stage Dockerfile with non-root user |
 | **Reverse Proxy** | Nginx with TLS, rate-limiting, and security headers |
 | **CI/CD** | GitHub Actions: lint → test → security scan → build → deploy |
+| **Cloud & IaC** | AWS S3 offsite backups + complete Terraform IaC (ECS, RDS, ALB, S3) |
 | **Testing** | pytest-asyncio with SQLite in-memory test DB |
 
 ### Project Layout
@@ -387,6 +390,51 @@ python -m app.seed
 ```
 
 Seeded SKUs: `LAPTOP-001`, `PHONE-001`, `TABLET-001`, `HEADPHONE-001`, `KEYBOARD-001`, `MOUSE-001`, `MONITOR-001`, `SSD-001`.
+
+---
+
+## Backup and Restore (Local & AWS S3)
+
+The backup and restore suite supports both local storage and remote **Amazon S3** offsite syncing with AES-256 encryption.
+
+### Creating a Backup
+- **Bash**:
+  ```bash
+  ./scripts/backup.sh
+  ```
+- **PowerShell (Windows)**:
+  ```powershell
+  .\scripts\backup.ps1
+  ```
+If `S3_BUCKET_NAME` is set in `.env`, the archive is automatically encrypted and pushed to `s3://$S3_BUCKET_NAME/backups/ecomdb_<timestamp>.sql.gz`.
+
+### Restoring a Backup
+You can restore from a local file or directly from an AWS S3 URI:
+- **From Local**:
+  ```bash
+  ./scripts/restore.sh ./backups/ecomdb_20261112_140000.sql.gz
+  ```
+- **From AWS S3**:
+  ```bash
+  ./scripts/restore.sh s3://my-ecom-bucket/backups/ecomdb_20261112_140000.sql.gz
+  ```
+- **Windows PowerShell**:
+  ```powershell
+  .\scripts\restore.ps1 -Source "s3://my-ecom-bucket/backups/ecomdb_20261112_140000.sql.gz"
+  ```
+
+---
+
+## AWS Cloud & Terraform IaC
+
+A complete, enterprise-grade Terraform setup is available in `infra/terraform/`:
+- **Amazon S3**: Offsite encrypted backup bucket with versioning, public access blocks, and 30-day Glacier lifecycle rules.
+- **AWS ECS Fargate**: High-availability container cluster running `ecommerce-api` across multiple AZs.
+- **AWS RDS PostgreSQL 16**: Multi-AZ managed database with KMS encryption and automated snapshots.
+- **Application Load Balancer (ALB)**: TLS termination with health check routing to `/health`.
+- **IAM Roles**: Least-privilege task execution and S3-backup scoped permissions.
+
+For detailed provisioning steps, see [AWS Cloud Architecture & S3 Integration Guide](docs/AWS_DEPLOYMENT.md).
 
 ---
 

@@ -43,7 +43,10 @@
   - Aquasecurity Trivy container security & vulnerability scan
   - Docker buildx multi-stage build, commit-SHA and semver tagging
   - Image push to GitHub Container Registry (`ghcr.io`)
-- **Reliability & Ops**: Automated shell scripts for backup (`pg_dump` + gzip), restore (database recreation and import), and container rollback to previous image tags.
+- **Cloud & AWS Infrastructure (IaC)**:
+  - Automated **Amazon S3** offsite backup sync with server-side AES256 encryption & 30-day Glacier lifecycle policy
+  - Complete **Terraform** configuration (`infra/terraform/`) provisioning VPC, ECS Fargate, RDS PostgreSQL, ALB, S3, and least-privilege IAM roles
+- **Reliability & Ops**: Automated shell & PowerShell scripts for backup (`pg_dump` + gzip), S3 sync, restore (database recreation and import), and container rollback to previous image tags.
 
 ### Architecture Diagram
 ```
@@ -159,11 +162,12 @@ Use this structured walkthrough script when recording your 3–5 minute presenta
 - Query readiness: `curl -k https://localhost/readiness` -> returns HTTP 503 Service Unavailable.
 - Recover DB: `docker start ecom_db` -> readiness recovers to HTTP 200 automatically.
 
-[4:00 - 4:45] BACKUP, RESTORE & ROLLBACK
-- Trigger backup: `./scripts/backup.sh` -> displays newly created timestamped gzip dump.
-- Drop or alter test data, then execute `./scripts/restore.sh backups/<file>.sql.gz`.
+[4:00 - 4:45] BACKUP, RESTORE & ROLLBACK (LOCAL & AWS S3)
+- Trigger backup: `./scripts/backup.sh` (or `.\scripts\backup.ps1`) -> displays newly created timestamped gzip dump.
+- Point out optional AWS S3 sync: with S3_BUCKET_NAME set, the backup is encrypted with AES256 and pushed to AWS S3.
+- Drop or alter test data, then execute `./scripts/restore.sh backups/<file>.sql.gz` (or `restore.sh s3://<bucket>/<file>.sql.gz`).
 - Verify database records are restored.
-- Conclude with a brief overview of the runbook (`RUNBOOK.md`).
+- Show Terraform infrastructure in `infra/terraform/` (ECS, RDS, S3, ALB) and conclude with the runbook (`RUNBOOK.md`).
 ```
 
 ---

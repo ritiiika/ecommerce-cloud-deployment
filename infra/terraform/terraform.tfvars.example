@@ -1,0 +1,9 @@
+aws_region          = "us-east-1"
+environment         = "production"
+app_name            = "ecommerce-api"
+container_image     = "ghcr.io/your-username/ecommerce-api:latest"
+container_port      = 8000
+db_name             = "ecomdb"
+db_username         = "ecom"
+db_password         = "SecureProdPassword123!"
+api_key_admin       = "SecureAdminApiKeyExample123"

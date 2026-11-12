@@ -189,29 +189,47 @@ docker compose logs api | grep '"path": "/api/v1/orders"'
 
 ## 5. Backup & Restore
 
-### Create a backup
+### Create a backup (Local & AWS S3)
 
-```bash
-bash scripts/backup.sh
-```
+- **Linux / macOS**:
+  ```bash
+  bash scripts/backup.sh
+  ```
+- **Windows PowerShell**:
+  ```powershell
+  .\scripts\backup.ps1
+  ```
 
-Backups are written to `./backups/ecomdb_<YYYYMMDD_HHMMSS>.sql.gz`.
+Backups are written to `./backups/ecomdb_<YYYYMMDD_HHMMSS>.sql.gz`. If `S3_BUCKET_NAME` is defined in `.env`, the script automatically uploads the encrypted archive to `s3://$S3_BUCKET_NAME/backups/`.
 
 ### List available backups
+- Local:
+  ```bash
+  ls -lh ./backups/
+  ```
+- AWS S3:
+  ```bash
+  aws s3 ls s3://$S3_BUCKET_NAME/backups/
+  ```
 
-```bash
-ls -lh ./backups/
-```
-
-### Restore from backup
+### Restore from backup (Local or AWS S3)
 
 > **WARNING**: This will drop and recreate the database. All current data will be lost.
 
-```bash
-bash scripts/restore.sh ./backups/ecomdb_20241110_120000.sql.gz
-```
+- **From Local File**:
+  ```bash
+  bash scripts/restore.sh ./backups/ecomdb_20241110_120000.sql.gz
+  ```
+- **From AWS S3 Directly**:
+  ```bash
+  bash scripts/restore.sh s3://my-ecom-backups/backups/ecomdb_20241110_120000.sql.gz
+  ```
+- **Windows PowerShell**:
+  ```powershell
+  .\scripts\restore.ps1 -Source "s3://my-ecom-backups/backups/ecomdb_20241110_120000.sql.gz"
+  ```
 
-The script will pause for 5 seconds before proceeding — press Ctrl+C to cancel.
+The script pauses for 5 seconds before dropping the database — press Ctrl+C to cancel.
 
 ### Automated backup (cron example)
 
