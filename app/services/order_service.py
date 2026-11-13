@@ -1,4 +1,3 @@
-
 """Order business logic with concurrent idempotency protection and stock management."""
 
 import hashlib
@@ -46,9 +45,7 @@ class OrderService:
             sort_keys=True,
         )
 
-        return hashlib.sha256(
-            canonical_representation.encode("utf-8")
-        ).hexdigest()
+        return hashlib.sha256(canonical_representation.encode("utf-8")).hexdigest()
 
     def _validate_existing_order(
         self,
@@ -58,10 +55,7 @@ class OrderService:
     ) -> None:
         """Reject reuse of an idempotency key with a different payload."""
 
-        if (
-            existing.request_hash
-            and existing.request_hash != current_hash
-        ):
+        if existing.request_hash and existing.request_hash != current_hash:
             raise ValueError(
                 f"Idempotency key '{idempotency_key}' "
                 "was already used for a different order payload"
@@ -69,27 +63,19 @@ class OrderService:
 
     async def get_by_id(self, order_id: uuid.UUID) -> Optional[Order]:
         result = await self.db.execute(
-            select(Order)
-            .options(selectinload(Order.items))
-            .where(Order.id == order_id)
+            select(Order).options(selectinload(Order.items)).where(Order.id == order_id)
         )
 
         return result.scalar_one_or_none()
 
-    async def _get_by_idempotency_key(
-        self, key: str
-    ) -> Optional[Order]:
+    async def _get_by_idempotency_key(self, key: str) -> Optional[Order]:
         result = await self.db.execute(
-            select(Order)
-            .options(selectinload(Order.items))
-            .where(Order.idempotency_key == key)
+            select(Order).options(selectinload(Order.items)).where(Order.idempotency_key == key)
         )
 
         return result.scalar_one_or_none()
 
-    async def create_order(
-        self, payload: OrderCreate
-    ) -> Tuple[Order, bool]:
+    async def create_order(self, payload: OrderCreate) -> Tuple[Order, bool]:
         """
         Create an order with concurrency-safe idempotency.
 
@@ -106,9 +92,7 @@ class OrderService:
         idempotency_key = payload.idempotency_key
 
         # STEP 1: Initial idempotency check
-        existing = await self._get_by_idempotency_key(
-            idempotency_key
-        )
+        existing = await self._get_by_idempotency_key(idempotency_key)
 
         if existing:
             self._validate_existing_order(
@@ -124,8 +108,7 @@ class OrderService:
 
             for item in payload.items:
                 requested_quantities[item.product_id] = (
-                    requested_quantities.get(item.product_id, 0)
-                    + item.quantity
+                    requested_quantities.get(item.product_id, 0) + item.quantity
                 )
 
             # STEP 3: Lock products in deterministic order.
@@ -144,23 +127,16 @@ class OrderService:
                 .with_for_update()
             )
 
-            products = {
-                product.id: product
-                for product in result.scalars().all()
-            }
+            products = {product.id: product for product in result.scalars().all()}
 
             # STEP 4: Verify every requested product exists.
             for product_id in product_ids:
                 if product_id not in products:
-                    raise ValueError(
-                        f"Product {product_id} not found or inactive"
-                    )
+                    raise ValueError(f"Product {product_id} not found or inactive")
 
             # STEP 5: Recheck idempotency after acquiring locks.
             # Another request may have completed while we were waiting.
-            existing = await self._get_by_idempotency_key(
-                idempotency_key
-            )
+            existing = await self._get_by_idempotency_key(idempotency_key)
 
             if existing:
                 self._validate_existing_order(
@@ -173,21 +149,15 @@ class OrderService:
                 await self.db.rollback()
 
                 # Reload the order in a fresh transaction.
-                existing = await self._get_by_idempotency_key(
-                    idempotency_key
-                )
+                existing = await self._get_by_idempotency_key(idempotency_key)
 
                 if existing is None:
-                    raise RuntimeError(
-                        "Previously detected order could not be retrieved"
-                    )
+                    raise RuntimeError("Previously detected order could not be retrieved")
 
                 return existing, False
 
             # STEP 6: Validate aggregate stock requirements.
-            for product_id, requested_quantity in (
-                requested_quantities.items()
-            ):
+            for product_id, requested_quantity in requested_quantities.items():
                 product = products[product_id]
 
                 if product.stock_quantity < requested_quantity:
@@ -220,9 +190,7 @@ class OrderService:
                 )
 
             # STEP 8: Deduct stock once per product.
-            for product_id, requested_quantity in (
-                requested_quantities.items()
-            ):
+            for product_id, requested_quantity in requested_quantities.items():
                 product = products[product_id]
                 product.stock_quantity -= requested_quantity
 
@@ -245,9 +213,7 @@ class OrderService:
             # A concurrent request may have committed the same key.
             await self.db.rollback()
 
-            existing_after_race = await self._get_by_idempotency_key(
-                idempotency_key
-            )
+            existing_after_race = await self._get_by_idempotency_key(idempotency_key)
 
             if existing_after_race:
                 self._validate_existing_order(
@@ -271,9 +237,7 @@ class OrderService:
 
         # STEP 11: Reload the committed order with its items.
         result = await self.db.execute(
-            select(Order)
-            .options(selectinload(Order.items))
-            .where(Order.id == order.id)
+            select(Order).options(selectinload(Order.items)).where(Order.id == order.id)
         )
 
         order = result.scalar_one()

@@ -1,4 +1,3 @@
-
 """Product business logic service."""
 
 import json
@@ -38,9 +37,7 @@ class ProductService:
         self.db.add(event)
         return event
 
-    async def get_audit_events(
-        self, entity_id: uuid.UUID
-    ) -> list[AuditEvent]:
+    async def get_audit_events(self, entity_id: uuid.UUID) -> list[AuditEvent]:
         result = await self.db.execute(
             select(AuditEvent)
             .where(AuditEvent.entity_id == str(entity_id))
@@ -62,32 +59,22 @@ class ProductService:
                 )
             )
 
-        total_result = await self.db.execute(
-            select(func.count()).select_from(query.subquery())
-        )
+        total_result = await self.db.execute(select(func.count()).select_from(query.subquery()))
         total = total_result.scalar_one()
 
-        result = await self.db.execute(
-            query.offset((page - 1) * page_size).limit(page_size)
-        )
+        result = await self.db.execute(query.offset((page - 1) * page_size).limit(page_size))
 
         return list(result.scalars().all()), total
 
     async def get_by_id(self, product_id: uuid.UUID) -> Optional[Product]:
-        result = await self.db.execute(
-            select(Product).where(Product.id == product_id)
-        )
+        result = await self.db.execute(select(Product).where(Product.id == product_id))
         return result.scalar_one_or_none()
 
     async def get_by_sku(self, sku: str) -> Optional[Product]:
-        result = await self.db.execute(
-            select(Product).where(Product.sku == sku)
-        )
+        result = await self.db.execute(select(Product).where(Product.sku == sku))
         return result.scalar_one_or_none()
 
-    async def create(
-        self, payload: ProductCreate, actor: str = "admin"
-    ) -> Product:
+    async def create(self, payload: ProductCreate, actor: str = "admin") -> Product:
         product = Product(
             id=uuid.uuid4(),
             **payload.model_dump(),

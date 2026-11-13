@@ -1,4 +1,3 @@
-
 """Order and OrderItem ORM models."""
 
 import uuid
