@@ -1,4 +1,5 @@
 """Product endpoints: search, detail, create (admin), stock update (admin), audit history."""
+
 import logging
 import uuid
 from typing import Optional
@@ -6,13 +7,17 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
-from app.schemas.product import (
-    ProductCreate, ProductUpdate, ProductResponse, ProductListResponse, StockUpdate
-)
-from app.schemas.audit import AuditEventResponse
-from app.services.product_service import ProductService
 from app.auth.dependencies import require_admin
+from app.database import get_db
+from app.schemas.audit import AuditEventResponse
+from app.schemas.product import (
+    ProductCreate,
+    ProductListResponse,
+    ProductResponse,
+    ProductUpdate,
+    StockUpdate,
+)
+from app.services.product_service import ProductService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -99,8 +104,6 @@ async def adjust_stock(
     summary="Get product audit events (admin)",
     dependencies=[Depends(require_admin)],
 )
-async def get_product_audit_events(
-    product_id: uuid.UUID, db: AsyncSession = Depends(get_db)
-):
+async def get_product_audit_events(product_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     svc = ProductService(db)
     return await svc.get_audit_events(product_id)

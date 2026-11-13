@@ -1,5 +1,7 @@
 """Product API tests including CRUD, admin authorization, negative stock prevention, and audit event validation."""
+
 import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -23,9 +25,7 @@ async def test_create_product_requires_admin(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_create_product(client: AsyncClient):
-    resp = await client.post(
-        "/api/v1/products", json=SAMPLE_PRODUCT, headers=ADMIN_HEADERS
-    )
+    resp = await client.post("/api/v1/products", json=SAMPLE_PRODUCT, headers=ADMIN_HEADERS)
     assert resp.status_code == 201
     data = resp.json()
     assert data["sku"] == "TEST-SKU-001"
@@ -62,7 +62,8 @@ async def test_get_product_not_found(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_adjust_stock_prevents_negative(client: AsyncClient):
     create_resp = await client.post(
-        "/api/v1/products", json={**SAMPLE_PRODUCT, "sku": "TEST-NEG-STOCK", "stock_quantity": 5},
+        "/api/v1/products",
+        json={**SAMPLE_PRODUCT, "sku": "TEST-NEG-STOCK", "stock_quantity": 5},
         headers=ADMIN_HEADERS,
     )
     product_id = create_resp.json()["id"]

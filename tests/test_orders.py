@@ -1,6 +1,8 @@
 """Order API tests including sequential and concurrent idempotency protection and stock management."""
+
 import asyncio
 import uuid
+
 import pytest
 from httpx import AsyncClient
 

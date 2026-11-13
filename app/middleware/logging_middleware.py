@@ -1,4 +1,5 @@
 """Structured JSON request/response logging middleware."""
+
 import json
 import logging
 import time

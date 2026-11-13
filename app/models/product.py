@@ -1,8 +1,9 @@
 """Product ORM model."""
+
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, Numeric, Integer, Boolean, DateTime, Text, Uuid
+from sqlalchemy import Boolean, DateTime, Integer, Numeric, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -11,9 +12,7 @@ from app.database import Base
 class Product(Base):
     __tablename__ = "products"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     sku: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=True)

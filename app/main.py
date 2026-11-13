@@ -1,4 +1,5 @@
 """E-Commerce Product & Order API – main application entry point."""
+
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -7,9 +8,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.database import engine, Base
+from app.database import Base, engine
 from app.middleware.logging_middleware import StructuredLoggingMiddleware
-from app.routers import health, products, orders
+from app.routers import health, orders, products
 
 # Configure root logger for structured JSON output
 logging.basicConfig(

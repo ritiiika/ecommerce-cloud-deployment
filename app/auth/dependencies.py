@@ -1,5 +1,7 @@
 """Admin API key authentication dependency with actor extraction."""
+
 from typing import Optional
+
 from fastapi import Header, HTTPException, status
 
 from app.config import settings

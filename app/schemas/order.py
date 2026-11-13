@@ -1,10 +1,10 @@
 """Pydantic schemas for Order."""
+
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.order import OrderStatus
 

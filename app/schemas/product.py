@@ -1,10 +1,11 @@
 """Pydantic schemas for Product."""
+
 import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProductBase(BaseModel):
