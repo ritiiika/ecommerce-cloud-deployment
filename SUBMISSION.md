@@ -23,7 +23,7 @@
 |---|---|---|
 | **Repository URL** | `https://github.com/<your-username>/ecommerce-platform` | *Replace with your GitHub repository link* |
 | **Primary Branch** | `main` | Production branch with CI/CD triggers |
-| **Final Commit ID** | `HEAD` *(or commit hash from `git rev-parse HEAD`)* | Pushed to GitHub |
+| **Final Commit ID** | `512d066` | Full audit resolution commit |
 | **Reviewer Access** | Public (or grant access to Algions evaluation team) | Ensure repository visibility |
 
 ---
