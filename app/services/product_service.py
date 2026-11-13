@@ -76,8 +76,9 @@ class ProductService:
         return result.scalar_one_or_none()
 
     async def create(self, payload: ProductCreate, actor: str = "admin") -> Product:
-        product = Product(**payload.model_dump())
+        product = Product(id=uuid.uuid4(), **payload.model_dump())
         self.db.add(product)
+        await self.db.flush()
         await self._record_audit(
             entity_type="product",
             entity_id=str(product.id),
@@ -87,7 +88,7 @@ class ProductService:
         )
         await self.db.commit()
         await self.db.refresh(product)
-        logger.info("Product created: sku=%s id=%s", product.sku, product.id)
+        logger.info("Product created: sku=%s id=%s actor=%s", product.sku, product.id, actor)
         return product
 
     async def update(

@@ -1,9 +1,12 @@
-"""Order business logic with idempotency and stock management."""
+"""Order business logic with concurrent idempotency protection and stock management."""
+import hashlib
+import json
 import logging
 import uuid
 from typing import Optional, Tuple
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -17,6 +20,21 @@ logger = logging.getLogger(__name__)
 class OrderService:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    def _compute_payload_hash(self, payload: OrderCreate) -> str:
+        """Compute deterministic SHA-256 fingerprint of the order payload."""
+        sorted_items = sorted(
+            [{"product_id": str(i.product_id), "quantity": i.quantity} for i in payload.items],
+            key=lambda x: x["product_id"],
+        )
+        canonical_representation = json.dumps(
+            {
+                "customer_email": payload.customer_email.lower().strip(),
+                "items": sorted_items,
+            },
+            sort_keys=True,
+        )
+        return hashlib.sha256(canonical_representation.encode("utf-8")).hexdigest()
 
     async def get_by_id(self, order_id: uuid.UUID) -> Optional[Order]:
         result = await self.db.execute(
@@ -36,14 +54,27 @@ class OrderService:
 
     async def create_order(self, payload: OrderCreate) -> Tuple[Order, bool]:
         """
-        Returns (order, created). If idempotency_key already exists,
-        returns the existing order and created=False.
-        No duplicate stock deductions are made on replay.
+        Creates an order with concurrent-safe idempotency.
+        
+        1. Checks if idempotency_key already exists.
+        2. Validates request payload fingerprint: if a key is reused with different items/email,
+           raises ValueError to prevent payload spoofing.
+        3. Locks product rows (SELECT ... FOR UPDATE) to safely validate and decrement stock.
+        4. Handles race conditions: if concurrent identical requests commit simultaneously,
+           catches IntegrityError on unique constraint, rolls back, and returns the committed order.
         """
+        current_hash = self._compute_payload_hash(payload)
+
+        # 1. Fast check for existing order
         existing = await self._get_by_idempotency_key(payload.idempotency_key)
         if existing:
+            if existing.request_hash and existing.request_hash != current_hash:
+                raise ValueError(
+                    f"Idempotency key '{payload.idempotency_key}' was already used for a different order payload"
+                )
             return existing, False
 
+        # 2. Acquire row-level locks and validate stock
         order_items = []
         total = 0.0
 
@@ -70,6 +101,7 @@ class OrderService:
 
             order_items.append(
                 OrderItem(
+                    id=uuid.uuid4(),
                     product_id=product.id,
                     product_sku=product.sku,
                     product_name=product.name,
@@ -81,7 +113,9 @@ class OrderService:
             product.stock_quantity -= item_req.quantity
 
         order = Order(
+            id=uuid.uuid4(),
             idempotency_key=payload.idempotency_key,
+            request_hash=current_hash,
             customer_email=payload.customer_email,
             total_amount=round(total, 2),
             items=order_items,
@@ -90,6 +124,18 @@ class OrderService:
 
         try:
             await self.db.commit()
+        except IntegrityError:
+            # Concurrent race condition: another concurrent transaction committed this idempotency_key
+            await self.db.rollback()
+            existing_after_race = await self._get_by_idempotency_key(payload.idempotency_key)
+            if existing_after_race:
+                if existing_after_race.request_hash and existing_after_race.request_hash != current_hash:
+                    raise ValueError(
+                        f"Idempotency key '{payload.idempotency_key}' was already used for a different order payload"
+                    )
+                logger.info("Handled concurrent idempotency race for key=%s", payload.idempotency_key)
+                return existing_after_race, False
+            raise
         except Exception:
             await self.db.rollback()
             raise

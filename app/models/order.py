@@ -24,6 +24,7 @@ class Order(Base):
     idempotency_key: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=False, index=True
     )
+    request_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     customer_email: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[OrderStatus] = mapped_column(
         SAEnum(OrderStatus), default=OrderStatus.CONFIRMED, nullable=False

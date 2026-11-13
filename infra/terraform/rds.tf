@@ -49,11 +49,12 @@ resource "aws_db_instance" "postgres" {
   db_subnet_group_name   = aws_db_subnet_group.rds.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  backup_retention_period = 7
-  backup_window           = "03:00-04:00"
-  maintenance_window      = "Sun:04:30-Sun:05:30"
-  skip_final_snapshot     = true
-  deletion_protection     = false
+  backup_retention_period   = 7
+  backup_window             = "03:00-04:00"
+  maintenance_window        = "Sun:04:30-Sun:05:30"
+  skip_final_snapshot       = var.rds_skip_final_snapshot
+  final_snapshot_identifier = "${var.app_name}-postgres-final"
+  deletion_protection       = var.rds_deletion_protection
 
   tags = {
     Name = "${var.app_name}-postgres-db"

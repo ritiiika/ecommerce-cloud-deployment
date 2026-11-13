@@ -44,24 +44,29 @@ async def get_product(product_id: uuid.UUID, db: AsyncSession = Depends(get_db))
     response_model=ProductResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create product (admin)",
-    dependencies=[Depends(require_admin)],
 )
-async def create_product(payload: ProductCreate, db: AsyncSession = Depends(get_db)):
+async def create_product(
+    payload: ProductCreate,
+    admin_actor: str = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
     svc = ProductService(db)
-    return await svc.create(payload)
+    return await svc.create(payload, actor=admin_actor)
 
 
 @router.patch(
     "/{product_id}",
     response_model=ProductResponse,
     summary="Update product (admin)",
-    dependencies=[Depends(require_admin)],
 )
 async def update_product(
-    product_id: uuid.UUID, payload: ProductUpdate, db: AsyncSession = Depends(get_db)
+    product_id: uuid.UUID,
+    payload: ProductUpdate,
+    admin_actor: str = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
 ):
     svc = ProductService(db)
-    product = await svc.update(product_id, payload)
+    product = await svc.update(product_id, payload, actor=admin_actor)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return product
@@ -71,14 +76,16 @@ async def update_product(
     "/{product_id}/stock",
     response_model=ProductResponse,
     summary="Adjust stock (admin)",
-    dependencies=[Depends(require_admin)],
 )
 async def adjust_stock(
-    product_id: uuid.UUID, payload: StockUpdate, db: AsyncSession = Depends(get_db)
+    product_id: uuid.UUID,
+    payload: StockUpdate,
+    admin_actor: str = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
 ):
     svc = ProductService(db)
     try:
-        product = await svc.adjust_stock(product_id, payload)
+        product = await svc.adjust_stock(product_id, payload, actor=admin_actor)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     if not product:

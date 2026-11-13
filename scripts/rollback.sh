@@ -1,27 +1,41 @@
 #!/usr/bin/env bash
-# Rollback to a previously tagged Docker image version
+# Rollback the API service to a previously verified image tag using Docker Compose
 # Usage: ./scripts/rollback.sh <image_tag>
 set -euo pipefail
 
 IMAGE_TAG="${1:-}"
 if [ -z "$IMAGE_TAG" ]; then
     echo "Usage: $0 <image_tag>"
-    echo "Example: $0 ecommerce-api:v1.0.0"
+    echo "Example: $0 ghcr.io/your-org/ecommerce-api:sha-a553bf9"
     exit 1
 fi
 
-echo "[rollback] Rolling back API to image: $IMAGE_TAG"
+echo "[rollback] Target rollback image: $IMAGE_TAG"
+echo "[rollback] Checking/pulling image..."
+docker pull "$IMAGE_TAG" 2>/dev/null || echo "[rollback] Using local image: $IMAGE_TAG"
 
-docker stop ecom_api || true
-docker rm ecom_api || true
-docker run -d \
-    --name ecom_api \
-    --network ecommerce-platform_default \
-    --env-file .env \
-    -p 8000:8000 \
-    --restart unless-stopped \
-    "$IMAGE_TAG"
+echo "[rollback] Creating temporary compose override for target image..."
+cat <<EOF > docker-compose.rollback.yml
+version: "3.9"
+services:
+  api:
+    image: $IMAGE_TAG
+    build: !reset null
+EOF
 
-echo "[rollback] Waiting for health check..."
-sleep 10
-docker exec ecom_api curl -f http://localhost:8000/health && echo "[rollback] Service healthy after rollback."
+echo "[rollback] Applying rollback via Docker Compose..."
+docker compose -f docker-compose.yml -f docker-compose.rollback.yml up -d --no-deps api
+rm -f docker-compose.rollback.yml
+
+echo "[rollback] Awaiting container health check..."
+for i in {1..12}; do
+    if docker exec ecom_api curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+        echo "[rollback] SUCCESS: Service healthy on rollback image $IMAGE_TAG"
+        exit 0
+    fi
+    echo "[rollback] Probe check ($i/12)..."
+    sleep 5
+done
+
+echo "[rollback] ERROR: Health check timed out after rollback." >&2
+exit 1

@@ -6,19 +6,21 @@ services:
     container_name: ecom_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ecomdb
-      POSTGRES_USER: ecom
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ecom_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-ecomdb}
+      POSTGRES_USER: ${POSTGRES_USER:-ecom}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ecom -d ecomdb"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ecom} -d ${POSTGRES_DB:-ecomdb}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
+    networks:
+      - internal_network
 
   api:
     build:
@@ -27,12 +29,12 @@ services:
     container_name: ecom_api
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+asyncpg://ecom:${POSTGRES_PASSWORD:-ecom_pass}@db:5432/ecomdb
-      API_KEY_ADMIN: ${API_KEY_ADMIN:-changeme-admin-key}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ecom}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-ecomdb}
+      API_KEY_ADMIN: ${API_KEY_ADMIN:?Set API_KEY_ADMIN in .env}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       APP_ENV: ${APP_ENV:-production}
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     depends_on:
       db:
         condition: service_healthy
@@ -42,6 +44,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
+    networks:
+      - internal_network
 
   nginx:
     image: nginx:alpine
@@ -52,12 +56,16 @@ services:
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - nginx_certs:/etc/nginx/certs:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - api
+    networks:
+      - internal_network
+
+networks:
+  internal_network:
+    driver: bridge
 
 volumes:
   postgres_data:
-    driver: local
-  nginx_certs:
     driver: local

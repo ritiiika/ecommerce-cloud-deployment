@@ -71,3 +71,21 @@ variable "api_key_admin" {
   sensitive   = true
   default     = "change-me-admin-key"
 }
+
+variable "certificate_arn" {
+  description = "ARN of an existing ACM certificate for HTTPS. If empty, a self-signed cert is imported for testing."
+  type        = string
+  default     = ""
+}
+
+variable "rds_skip_final_snapshot" {
+  description = "Set false in production to require snapshot on teardown"
+  type        = bool
+  default     = false
+}
+
+variable "rds_deletion_protection" {
+  description = "Enable deletion protection on production RDS database"
+  type        = bool
+  default     = false
+}
